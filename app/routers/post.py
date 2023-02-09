@@ -15,22 +15,26 @@ router = APIRouter(
 #     return {'data': 'success'}
 
 @router.get('/', response_model=List[schemas.ResponseBase])
-def get_posts(db: Session = Depends(get_db), limit: int = 10, skip: int = 0, search: Optional[str] = ''):
+def get_posts(db: Session = Depends(get_db), limit: int = 10, skip: int = 0, search: Optional[str] = '', current_user: models.User = Depends(oauth2.get_current_user)):
     # USING RAW SQL
     # cursor.execute('''SELECT * FROM posts''')
     # posts = cursor.fetchall()
 
     # USING AN ORM (SQLALCHEMY)
-    posts = db.query(models.Post).filter(models.Post.title.contains(search) == True).limit(limit).offset(skip).all()
-    # results = db.query(models.Post, func.count(models.Vote.post_id).label('votes')).join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).all()
-    
-    # for post in posts:
-    #     for result in results:
-    #         if result.Post.id == post.id:
-    #             post.votes = result[1]
-    
-    db.commit()
-    return posts
+    if current_user.id != None:
+        posts = db.query(models.Post).filter(models.Post.title.contains(search) == True).limit(limit).offset(skip).all()
+        # results = db.query(models.Post, func.count(models.Vote.post_id).label('votes')).join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).all()
+        
+        # for post in posts:
+        #     for result in results:
+        #         if result.Post.id == post.id:
+        #             post.votes = result[1]
+        
+        db.commit()
+        return posts
+
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f'Please, login before seeing the posts')
 
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.ResponseBase)
 def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
@@ -56,11 +60,15 @@ def get_post(id: int, response: Response, db: Session = Depends(get_db), current
     # USING AN ORM (SQLALCHEMY)
     post =  db.query(models.Post).filter(models.Post.id == id).first()
 
-    if post != None:
-        return post
+    if current_user.id != None:
+        if post != None:
+            return post
 
-    elif post == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Post with id {id} was not found')
+        elif post == None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Post with id {id} was not found')
+
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f'Please, login before seeing this post')
 
 @router.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):

@@ -5,12 +5,13 @@ from typing import Optional
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
+    phone_number: str
 
 class UserOut(BaseModel):
     id: int
     email: EmailStr
     created_at: datetime
-
+    
     class Config:
         orm_mode = True
 
