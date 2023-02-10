@@ -93,3 +93,54 @@ def test_delete_other_user_post(authorized_client, test_user, test_posts):
 
     response = authorized_client.delete(f'/posts/{post_id}')
     assert response.status_code == 403
+
+@pytest.mark.parametrize('title, content, id', [
+    ('fisrt title updated', 'fisrt content updated', 1),
+    ('second title updated', 'fisrt second updated', 2),
+    ('third title updated', 'third content updated', 3)
+])
+def test_update_post(authorized_client, test_posts, title, content, id):
+    data = {
+        'title': title,
+        'content': content,
+        'id': id
+    }
+
+    response = authorized_client.put(f'/posts/{id}', json=data)
+    assert response.json().get('title') == title
+    assert response.json().get('content') == content
+    assert response.json().get('id') == id
+
+def test_update_other_user_post(authorized_client, test_user, test_posts):
+    data = {
+        'title': 'failed attempt of updating title',
+        'content': 'failed attempt of updating title',
+        'id': test_user['id']
+    }
+
+    for post in test_posts:
+        if post.user_id != test_user['id']:
+            post_id = post.id
+
+    response = authorized_client.put(f'/posts/{post_id}', json=data)
+    assert response.status_code == 403
+
+def test_unauthorized_user_update_post(client, test_user, test_posts):
+    data = {
+        'title': 'failed attempt of updating title',
+        'content': 'failed attempt of updating title',
+        'id': test_user['id']
+    }
+
+    response = client.put(f'/posts/{id}', json=data)
+    assert response.status_code == 401
+
+def test_update_post_not_exist(authorized_client, test_user, test_posts):
+    data = {
+        'title': 'failed attempt of updating title',
+        'content': 'failed attempt of updating title',
+        'id': test_user['id']
+    }
+
+    response = authorized_client.put('/posts/99999', json=data)
+    assert response.status_code == 404
